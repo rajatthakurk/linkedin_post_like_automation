@@ -56,7 +56,7 @@ def like_posts_and_scrape_company_info(driver, company_index, visited_companies,
     try:
         companies = driver.find_elements(By.CSS_SELECTOR, '.reusable-search__result-container')
         company = companies[company_index]
-        company_name = company.text
+        company_name = company.text.split('\n')[0]  # Extract the company name
 
         if company_name in visited_companies:
             print(f"Skipping already visited company: {company_name}")
@@ -171,7 +171,12 @@ def like_posts_and_scrape_company_info(driver, company_index, visited_companies,
         except Exception as e:
             print(f"Unexpected error scraping company info: {e}")
 
+        # Save the workbook immediately after visiting each company
+        wb.save("visited_companies.xlsx")
+        print("Excel file saved.")
+
         save_visited_companies(visited_companies)
+        print("Visited company list is updated.")
 
         driver.get('https://www.linkedin.com/mynetwork/network-manager/company/')
     except IndexError:
@@ -221,7 +226,7 @@ def main():
         password = None
 
     # Specify the path to the ChromeDriver in the project directory
-    driver_path = 'chromedriver-win64\chromedriver.exe'
+    driver_path = 'chromedriver-win64/chromedriver.exe'
     chrome_options = Options()
     chrome_options.add_argument("--start-maximized")
 
@@ -235,24 +240,42 @@ def main():
         print("Login failed. Exiting script.")
         driver.quit()
         return
-    wb = Workbook()
-    ws = wb.active
-    ws.append(["Company Name", "Website", "Overview", "Size", "Headquarters"])
+
+    # Load or create the workbook
+    try:
+        wb = load_workbook("visited_companies.xlsx")
+    except FileNotFoundError:
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Company Name", "Website", "Overview", "Size", "Headquarters"])
+    else:
+        ws = wb.active
 
     visited_companies = load_visited_companies()
+    print("Current visited companies:", [name.split('\n')[0] for name in visited_companies])
 
     navigate_to_company_pages(driver)
 
-    start_time = time.time()
-    num_companies_to_process = 50
     company_index = 0
-    while company_index < num_companies_to_process:
+    while True:
+        # Get the list of companies
+        companies = driver.find_elements(By.CSS_SELECTOR, '.reusable-search__result-container')
+
+        # Skip already visited companies
+        while company_index < len(companies) and companies[company_index].text.split('\n')[0] in visited_companies:
+            company_index += 1
+
+        if company_index >= len(companies):
+            print("No more new companies to process. Exiting.")
+            break
+
         like_posts_and_scrape_company_info(driver, company_index, visited_companies, wb)
         company_index += 1
-        time.sleep(20)
-        save_visited_companies(visited_companies)
+        time.sleep(20)  # Adjust this sleep time as necessary
 
-    wb.save("visited_companies.xlsx")
+        save_visited_companies(visited_companies)
+        print("Visited company list is updated.")
+
     driver.quit()
 
 if __name__ == "__main__":
