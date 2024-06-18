@@ -130,6 +130,7 @@ def like_posts_and_scrape_company_info(driver, company_index, visited_companies,
             overview = "N/A"
             size = "N/A"
             headquarters = "N/A"
+            phone = "N/A"
 
             # Attempt to scrape each element
             try:
@@ -139,7 +140,6 @@ def like_posts_and_scrape_company_info(driver, company_index, visited_companies,
 
             try:
                 website = driver.find_element(By.XPATH, '//dd[@class="mb4 t-black--light text-body-medium"]/a').get_attribute('href')
-
             except NoSuchElementException:
                 pass
 
@@ -157,13 +157,20 @@ def like_posts_and_scrape_company_info(driver, company_index, visited_companies,
                 headquarters = driver.find_element(By.XPATH, '//dt[text()="Headquarters"]/following-sibling::dd').text
             except NoSuchElementException:
                 pass
+            
+            try:
+                phone_element = driver.find_element(By.XPATH, '//a[contains(@href, "tel:")]/span[contains(@class, "link-without-visited-state")]')
+                phone = phone_element.text.strip() if phone_element else "N/A"
+            except NoSuchElementException:
+                pass
 
             company_info = {
                 'name': name,
                 'website': website,
                 'overview': overview,
                 'size': size,
-                'headquarters': headquarters
+                'headquarters': headquarters,
+                'phone': phone
             }
 
             print(company_info)
@@ -210,7 +217,8 @@ def append_to_excel(wb, company_info):
         company_info['website'],
         company_info['overview'],
         company_info['size'],
-        company_info['headquarters']
+        company_info['headquarters'],
+        company_info['phone']
     )
     ws.append(row)
 
@@ -255,7 +263,7 @@ def main():
     except FileNotFoundError:
         wb = Workbook()
         ws = wb.active
-        ws.append(["Company Name", "Website", "Overview", "Size", "Headquarters"])
+        ws.append(["Company Name", "Website", "Overview", "Size", "Headquarters", "Phone"])
     else:
         ws = wb.active
 
@@ -272,7 +280,7 @@ def main():
         elapsed_time = time.time() - start_time
         if elapsed_time >= 3600:
             print("Pausing script for 10 minutes.")
-            time.sleep(600)  # Pause for 10 minutes
+            time.sleep(600)  # Pause for 10 minutes (600 seconds)
             start_time = time.time()  # Reset the start time
 
         # Get the list of companies
@@ -293,7 +301,7 @@ def main():
 
         like_posts_and_scrape_company_info(driver, company_index, visited_companies, wb)
         company_index += 1
-        time.sleep(20)
+        time.sleep(20)  # Adjust sleep time as necessary
 
         save_visited_companies(visited_companies)
         print("Visited company list is updated.")
