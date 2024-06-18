@@ -51,6 +51,14 @@ def login_linkedin(driver, username=None, password=None):
 
 def navigate_to_company_pages(driver):
     driver.get('https://www.linkedin.com/mynetwork/network-manager/company/')
+    time.sleep(5)  # Give the page time to load initially
+
+def scroll_to_load_more_companies(driver):
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(5)  # Wait for new companies to load
+    new_height = driver.execute_script("return document.body.scrollHeight")
+    return new_height != last_height
 
 def like_posts_and_scrape_company_info(driver, company_index, visited_companies, wb):
     try:
@@ -257,7 +265,16 @@ def main():
     navigate_to_company_pages(driver)
 
     company_index = 0
+    start_time = time.time()  # Record the start time of the script
+
     while True:
+        # Check if an hour has passed
+        elapsed_time = time.time() - start_time
+        if elapsed_time >= 3600:
+            print("Pausing script for 10 minutes.")
+            time.sleep(600)  # Pause for 10 minutes
+            start_time = time.time()  # Reset the start time
+
         # Get the list of companies
         companies = driver.find_elements(By.CSS_SELECTOR, '.reusable-search__result-container')
 
@@ -266,12 +283,17 @@ def main():
             company_index += 1
 
         if company_index >= len(companies):
-            print("No more new companies to process. Exiting.")
-            break
+            print("No more new companies to process. Scrolling to load more companies.")
+            if not scroll_to_load_more_companies(driver):
+                print("No more companies to process even after scrolling. Exiting.")
+                break
+            companies = driver.find_elements(By.CSS_SELECTOR, '.reusable-search__result-container')
+            company_index = 0
+            continue
 
         like_posts_and_scrape_company_info(driver, company_index, visited_companies, wb)
         company_index += 1
-        time.sleep(20)  # Adjust this sleep time as necessary
+        time.sleep(20)
 
         save_visited_companies(visited_companies)
         print("Visited company list is updated.")

@@ -1,4 +1,5 @@
-/venv
-/cookies.pkl
-/visited_companies.pkl
-/visited_companies.xlsx
+venv
+cookies.pkl
+visited_companies.pkl
+visited_companies.xlsx
+linkedin_main copy.py
